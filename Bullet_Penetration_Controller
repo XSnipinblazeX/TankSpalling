@@ -1,0 +1,134 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Bullet_Penetration_Controller : MonoBehaviour
+{
+   [Header("Spall Settings")]
+    GameObject cam;
+   //measurement is in mm
+   [SerializeField] int spallFragments = 90;
+   [SerializeField] float spallSpread = 90f;
+    public float penetrationAmount;
+    public Vector3 endPoint; //Point where the shell exits
+    public Vector3 spallRayLine; //Spall racastrender
+    public Vector3? penetrationPoint; //the inside of the mesh
+    public Vector3 spallpenPoint;
+    public Vector3? impactPoint; //point where the shell hit	
+    public Vector3 spallImpactPoint;
+    public int bulletDistance = 1000;
+    public int spallDistance = 1;
+   
+
+   private void OnAwake() 
+	{
+	 GenerateSpall();
+	
+	}
+    private void Update()
+    {
+        //UpdatePenetration();
+	GetShootingDirection();
+	if (Input.GetButtonDown("Fire1")) {
+Shoot();
+}
+    }
+    
+  void Shoot() 
+	{
+	 UpdatePenetration();
+	}
+    void UpdatePenetration()
+    {
+        Ray ray = new Ray(this.transform.position, this.transform.forward);
+        RaycastHit hit;
+        if (Physics.Raycast(ray, out hit))
+        {
+            impactPoint = hit.point; //the point where the bullet hit the target
+	    spallImpactPoint = hit.point;
+            Ray penRay = new Ray(hit.point + ray.direction * penetrationAmount, -ray.direction);
+            RaycastHit penHit;
+            if (hit.collider.Raycast(penRay, out penHit, penetrationAmount))
+            {
+                penetrationPoint = penHit.point;
+		spallpenPoint = penHit.point + ray.direction * spallDistance;
+                endPoint = this.transform.position + this.transform.forward * bulletDistance;
+		GenerateSpall();
+            }
+            else
+            {
+                endPoint = impactPoint.Value + ray.direction * penetrationAmount;
+                penetrationPoint = endPoint;
+		//GenerateSpall();
+            }
+        }
+        else
+        {
+            endPoint = this.transform.position + this.transform.forward * bulletDistance;
+            penetrationPoint = null;
+            impactPoint = null;
+	    GenerateSpall();
+		
+        }
+	
+	
+    }
+
+    private void OnDrawGizmos()
+    {
+	
+        UpdatePenetration();
+	
+        if(!penetrationPoint.HasValue || !impactPoint.HasValue)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawLine(this.transform.position, endPoint);
+        }
+        else
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawLine(this.transform.position, impactPoint.Value);
+	    Debug.DrawRay(this.transform.position, impactPoint.Value, Color.white, 0.1f);
+            Gizmos.color = Color.red;
+            Gizmos.DrawLine(impactPoint.Value, penetrationPoint.Value);
+            Debug.DrawRay(impactPoint.Value, penetrationPoint.Value, Color.white, 1f);
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawLine(penetrationPoint.Value ,endPoint);
+            Debug.DrawRay(penetrationPoint.Value ,endPoint, Color.white, 2.5f);
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawLine(spallImpactPoint, spallRayLine);
+            Debug.DrawRay(spallImpactPoint, spallRayLine, Color.cyan, 0.1f);
+	   
+        }
+
+    }
+    //Randomize the Direction Of Spall
+    Vector3 GetShootingDirection() 
+	{
+		Vector3 targetPos = this.transform.position + this.transform.forward * spallDistance;
+		targetPos = new Vector3 (
+			targetPos.x + Random.Range(-spallSpread, spallSpread),
+			targetPos.y + Random.Range(-spallSpread, spallSpread),
+			targetPos.z + Random.Range(-spallSpread, spallSpread)
+			);
+		Vector3 direction = targetPos - this.transform.position;
+		return direction.normalized;
+	}
+    public void GenerateSpall() 
+	{
+		GetShootingDirection(); 
+		for(int i = 0; i < spallFragments; i++) //Making the fragments
+		{
+		 Ray spallRay = new Ray(this.transform.position, GetShootingDirection());
+		 RaycastHit spallHit;
+			if (Physics.Raycast(this.transform.position, GetShootingDirection(), out spallHit, spallDistance)) 
+			{
+			//Damage Internal Components
+			spallRayLine = spallRay.direction * spallDistance;
+			
+			}
+        		spallRayLine = spallRay.direction * spallDistance;
+			
+		}	
+	}
+}
